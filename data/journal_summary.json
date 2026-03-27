@@ -1,0 +1,17 @@
+{
+  "total_return": 1.1103110150696502,
+  "cagr": 0.16447157314426186,
+  "annualized_volatility": 0.20472563660915236,
+  "sharpe_ratio": 0.8470616397877108,
+  "sortino_ratio": 0.9669933420623615,
+  "max_drawdown": -0.21978875802824982,
+  "calmar_ratio": 0.7483165864339706,
+  "win_rate": 0.5088996763754046,
+  "profit_factor": 1.176478496602598,
+  "average_daily_turnover": 0.08379580987055016,
+  "annualized_turnover": 21.11654408737864,
+  "total_trading_cost": 0.207142,
+  "benchmark_total_return": 2.2295659679828086,
+  "strategy_vs_benchmark_total_return": -0.35485885701831055,
+  "information_ratio": -0.6004491272617302
+}

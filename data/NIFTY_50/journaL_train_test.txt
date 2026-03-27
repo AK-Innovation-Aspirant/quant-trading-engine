@@ -1,0 +1,35 @@
+TRAIN (2021-2024) PERFORMANCE
+----------------------------------------
+total_return                       : 4.739520
+cagr                               : 0.595921
+annualized_volatility              : 0.565280
+sharpe_ratio                       : 1.116079
+sortino_ratio                      : 1.348301
+max_drawdown                       : -0.541932
+calmar_ratio                       : 1.099623
+win_rate                           : 0.491507
+profit_factor                      : 1.229269
+average_daily_turnover             : 0.063273
+annualized_turnover                : 15.944688
+total_trading_cost                 : 0.118245
+benchmark_total_return             : 1.053158
+strategy_vs_benchmark_total_return : 2.435483
+information_ratio                  : 0.975161
+
+TEST (2025-2026) PERFORMANCE
+----------------------------------------
+total_return                       : 0.194298
+cagr                               : 0.164385
+annualized_volatility              : 0.634147
+sharpe_ratio                       : 0.580764
+sortino_ratio                      : 0.879588
+max_drawdown                       : -0.684106
+calmar_ratio                       : 0.240291
+win_rate                           : 0.489796
+profit_factor                      : 1.103820
+average_daily_turnover             : 0.067220
+annualized_turnover                : 16.939418
+total_trading_cost                 : 0.039509
+benchmark_total_return             : 0.103266
+strategy_vs_benchmark_total_return : 0.190137
+information_ratio                  : 0.546970
