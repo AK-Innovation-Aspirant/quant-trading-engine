@@ -298,9 +298,3 @@ This project is designed as a **research-first trading system**, with the goal o
 - Building robust strategies before deployment
 - Stress-testing ideas across long time horizons
 - Creating a repeatable pipeline for systematic investing
-
----
-
-## License
-
-Add your license here (MIT, Apache 2.0, etc.)
