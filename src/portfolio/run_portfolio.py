@@ -18,11 +18,23 @@ def main() -> None:
         raise FileNotFoundError(f"Missing input file: {SIGNALS_PATH}")
 
     signals_df = pd.read_parquet(SIGNALS_PATH)
-
+    """
     cfg = PortfolioConfig(
         top_n=10,
         rebalance_every_n_days=5,
         weight_method="inverse_vol",   # change to "equal" if you want
+        max_weight=0.15,
+        slippage_bps=10.0,
+        min_vol_floor=1e-6,
+        output_round=6,
+    )
+    """
+    cfg = PortfolioConfig(
+        top_n=10,
+        rebalance_every_n_days=5,
+        entry_n=15,
+        exit_n=25,
+        weight_method="inverse_vol",         
         max_weight=0.15,
         slippage_bps=10.0,
         min_vol_floor=1e-6,

@@ -21,10 +21,24 @@ def main() -> None:
     print("\nFUNDAMENTALS DATA")
     print("Rows:", len(fundamentals_df))
     print("Symbols:", fundamentals_df["symbol"].nunique())
+
     if not fundamentals_df.empty:
         print("Snapshot date range:", fundamentals_df["date"].min(), "to", fundamentals_df["date"].max())
+
+        counts = (
+            fundamentals_df.groupby("symbol")["date"]
+            .nunique()
+            .sort_values(ascending=False)
+        )
+
+        print("Avg snapshots per symbol:", round(counts.mean(), 2))
+        print("Median snapshots per symbol:", round(counts.median(), 2))
+
+        print("\nTop symbols by snapshot count:")
+        print(counts.head(10).to_string())
+
         print("\nSample fundamentals:")
-        print(fundamentals_df.head(10).to_string(index=False))
+        print(fundamentals_df.head(20).to_string(index=False))
 
     loaded = load_market_data("data/market_data.parquet")
     latest_date = loaded["date"].max()

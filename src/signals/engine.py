@@ -219,12 +219,21 @@ def compute_signals(
     # ------------------------------------------------------------------
     # Eligibility
     # ------------------------------------------------------------------
+    """
     required_raw_cols = [
         "momentum_raw",
         "reversal_raw",
         "volatility_raw",
         "trend_raw",
         "earnings_yield_raw",
+    ]
+    """
+    # Remove value col due to insufficient coverage in fundamentals
+    required_raw_cols = [
+        "momentum_raw",
+        "reversal_raw",
+        "volatility_raw",
+        "trend_raw",
     ]
     df["eligible"] = df["history_bars"] >= cfg.min_history_bars
 
@@ -253,6 +262,7 @@ def compute_signals(
     # Bigger earnings yield is better
     df = _apply_cross_sectional_scores(df, "earnings_yield_raw", "value_score", ascending=True)
 
+    df["value_score"] = df["value_score"].fillna(0.0)
     # ------------------------------------------------------------------
     # Composite score
     # ------------------------------------------------------------------

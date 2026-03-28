@@ -73,7 +73,8 @@ def _clean_types(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _sorted_trading_dates(df: pd.DataFrame) -> list[pd.Timestamp]:
-    return sorted(df["date"].dropna().unique().tolist())
+    dates = pd.to_datetime(df["date"]).dropna().sort_values().drop_duplicates()
+    return list(dates)
 
 
 def _compute_rebalance_dates(

@@ -12,45 +12,131 @@ from .universe import get_reference_universe
 DEFAULT_FUNDAMENTALS_PATH = Path("data/fundamentals.parquet")
 
 
-def _download_one_symbol_fundamentals(symbol: str) -> pd.DataFrame:
+def _extract_quarterly_net_income(financials: pd.DataFrame) -> pd.Series:
+    if financials is None or financials.empty:
+        return pd.Series(dtype=float)
+
+    candidates = [
+        "Net Income",
+        "Net Income Common Stockholders",
+        "Net Income Applicable To Common Shares",
+        "NetIncome",
+    ]
+
+    for name in candidates:
+        if name in financials.index:
+            s = financials.loc[name]
+            s.index = pd.to_datetime(s.index)
+            s = pd.to_numeric(s, errors="coerce").sort_index()
+            return s
+
+    return pd.Series(dtype=float)
+
+
+def _extract_quarterly_diluted_shares(financials: pd.DataFrame) -> pd.Series:
+    if financials is None or financials.empty:
+        return pd.Series(dtype=float)
+
+    candidates = [
+        "Diluted Average Shares",
+        "Diluted Weighted Average Shares",
+        "Weighted Average Dilution Earnings Shares",
+        "Ordinary Shares Number",
+        "Share Issued",
+    ]
+
+    for name in candidates:
+        if name in financials.index:
+            s = financials.loc[name]
+            s.index = pd.to_datetime(s.index)
+            s = pd.to_numeric(s, errors="coerce").sort_index()
+            return s
+
+    return pd.Series(dtype=float)
+
+
+def _extract_historical_ttm_eps(symbol: str) -> pd.DataFrame:
     """
-    Download a minimal fundamentals snapshot for one symbol.
+    Build approximate historical TTM EPS snapshots for one symbol.
 
-    v1:
-    - fetch trailing EPS from yfinance
-    - stamp with today's date
-
-    Note:
-    This is a current snapshot feed, not full historical point-in-time fundamentals.
+    Output columns:
+    - date
+    - symbol
+    - trailing_eps
     """
     try:
         ticker = yf.Ticker(symbol)
-        info = ticker.info or {}
     except Exception:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
 
-    trailing_eps = pd.to_numeric(info.get("trailingEps"), errors="coerce")
+    quarterly_financials = pd.DataFrame()
+    for attr in ["quarterly_income_stmt", "quarterly_financials"]:
+        try:
+            candidate = getattr(ticker, attr)
+            if candidate is not None and not candidate.empty:
+                quarterly_financials = candidate
+                break
+        except Exception:
+            continue
 
-    if pd.isna(trailing_eps):
-        return pd.DataFrame()
+    if quarterly_financials is None or quarterly_financials.empty:
+        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
 
-    return pd.DataFrame(
-        [
-            {
-                "date": pd.Timestamp.today().normalize(),
-                "symbol": symbol,
-                "trailing_eps": trailing_eps,
-            }
-        ]
+    net_income = _extract_quarterly_net_income(quarterly_financials)
+    diluted_shares = _extract_quarterly_diluted_shares(quarterly_financials)
+
+    if net_income.empty or diluted_shares.empty:
+        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+
+    df = pd.DataFrame(
+        {
+            "net_income": net_income,
+            "diluted_shares": diluted_shares,
+        }
+    ).sort_index()
+
+    df["quarterly_eps"] = df["net_income"] / df["diluted_shares"]
+    df["quarterly_eps"] = pd.to_numeric(df["quarterly_eps"], errors="coerce")
+    df = df.dropna(subset=["quarterly_eps"])
+
+    if df.empty:
+        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+
+    df["trailing_eps"] = df["quarterly_eps"].rolling(window=4, min_periods=4).sum()
+    df = df.dropna(subset=["trailing_eps"])
+
+    if df.empty:
+        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+
+    out = df.reset_index().rename(columns={"index": "date"})
+    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
+    out["symbol"] = symbol
+    out["trailing_eps"] = pd.to_numeric(out["trailing_eps"], errors="coerce")
+
+    out = (
+        out[["date", "symbol", "trailing_eps"]]
+        .dropna(subset=["date", "symbol", "trailing_eps"])
+        .sort_values(["symbol", "date"])
+        .drop_duplicates(subset=["date", "symbol"], keep="last")
+        .reset_index(drop=True)
     )
+    return out
+
+
+def _download_one_symbol_fundamentals(symbol: str) -> pd.DataFrame:
+    """
+    Download approximate historical trailing EPS snapshots for one symbol.
+    Returns many rows across time, not one current snapshot row.
+    """
+    return _extract_historical_ttm_eps(symbol)
 
 
 def download_reference_fundamentals(
     symbols: Iterable[str] | None = None,
 ) -> pd.DataFrame:
     """
-    Download trailing EPS fundamentals for the reference universe.
-    Returns one row per symbol.
+    Download approximate historical trailing EPS snapshots
+    for the reference universe.
     """
     symbols = list(symbols) if symbols is not None else get_reference_universe()
 
@@ -62,7 +148,7 @@ def download_reference_fundamentals(
         try:
             df = _download_one_symbol_fundamentals(symbol)
             if df.empty:
-                print(f"[WARN] No fundamentals returned for {symbol}; skipping.")
+                print(f"[WARN] No historical fundamentals returned for {symbol}; skipping.")
                 continue
             frames.append(df)
         except Exception as exc:
@@ -76,10 +162,11 @@ def download_reference_fundamentals(
     out["symbol"] = out["symbol"].astype(str)
     out["trailing_eps"] = pd.to_numeric(out["trailing_eps"], errors="coerce")
 
-    out = out.sort_values(["symbol", "date"]).drop_duplicates(
-        subset=["date", "symbol"], keep="last"
+    out = (
+        out.sort_values(["symbol", "date"])
+        .drop_duplicates(subset=["date", "symbol"], keep="last")
+        .reset_index(drop=True)
     )
-    out = out.reset_index(drop=True)
     return out
 
 
@@ -108,10 +195,11 @@ def merge_with_existing_fundamentals(
     merged["symbol"] = merged["symbol"].astype(str)
     merged["trailing_eps"] = pd.to_numeric(merged["trailing_eps"], errors="coerce")
 
-    merged = merged.sort_values(["symbol", "date"]).drop_duplicates(
-        subset=["date", "symbol"], keep="last"
+    merged = (
+        merged.sort_values(["symbol", "date"])
+        .drop_duplicates(subset=["date", "symbol"], keep="last")
+        .reset_index(drop=True)
     )
-    merged = merged.reset_index(drop=True)
     return merged
 
 
@@ -139,7 +227,7 @@ def update_fundamentals_parquet(
 ) -> pd.DataFrame:
     """
     End-to-end updater:
-    - download fresh trailing EPS snapshots
+    - download historical trailing EPS snapshots
     - merge with existing parquet
     - save fundamentals dataset
     """
