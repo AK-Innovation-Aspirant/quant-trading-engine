@@ -205,3 +205,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Generated research artifacts
+data/*.parquet
+data/*.json
+data/quality/
+
+# Python cache
+__pycache__/
+*.pyc
