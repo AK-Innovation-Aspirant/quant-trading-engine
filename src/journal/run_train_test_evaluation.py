@@ -9,10 +9,21 @@ from .journal_metrics import (
     compute_equity_curve,
 )
 
+
+TRAIN_START = "2021-01-01"
 TRAIN_END = "2024-12-31"
 TEST_START = "2025-01-01"
+TEST_END = "2026-12-31"
+
 
 def evaluate_period(df: pd.DataFrame, name: str) -> None:
+    if df.empty:
+        print()
+        print(f"{name} PERFORMANCE")
+        print("-" * 40)
+        print("No rows in this period.")
+        return
+
     daily_returns = df["net_portfolio_return"]
     turnover = df["turnover"]
     trading_cost = df["trading_cost"]
@@ -50,20 +61,28 @@ def evaluate_period(df: pd.DataFrame, name: str) -> None:
 
 def main() -> None:
     journal = pd.read_parquet(JOURNAL_DAILY_PATH)
-
     journal["date"] = pd.to_datetime(journal["date"])
 
-    train = journal[journal["date"] <= TRAIN_END]
-    test = journal[journal["date"] >= TEST_START]
+    train = journal[
+        (journal["date"] >= TRAIN_START)
+        & (journal["date"] <= TRAIN_END)
+    ]
+
+    test = journal[
+        (journal["date"] >= TEST_START)
+        & (journal["date"] <= TEST_END)
+    ]
 
     print()
     print("TRAIN / TEST SPLIT")
     print("------------------")
-    print(f"Train rows: {len(train)}")
-    print(f"Test rows:  {len(test)}")
+    print(f"Train period: {TRAIN_START} to {TRAIN_END}")
+    print(f"Test period:  {TEST_START} to {TEST_END}")
+    print(f"Train rows:   {len(train)}")
+    print(f"Test rows:    {len(test)}")
 
-    evaluate_period(train, "TRAIN (2021-2024)")
-    evaluate_period(test, "TEST (2025-2026)")
+    evaluate_period(train, f"TRAIN ({TRAIN_START} to {TRAIN_END})")
+    evaluate_period(test, f"TEST ({TEST_START} to {TEST_END})")
 
 
 if __name__ == "__main__":
