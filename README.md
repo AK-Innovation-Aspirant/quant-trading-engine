@@ -34,12 +34,14 @@ Responsibilities:
 - Maintain canonical dataset (`market_data.parquet`)
 - Filter tradable universe (min history constraint)
 - Integrate fundamentals (EPS, earnings yield)
+- Apply conservative reporting lag to reduce lookahead bias in fundamentals
 
 Key files:
 - `downloader.py` — fetches raw market data
 - `cleaner.py` — cleans and standardizes data
 - `validator.py` — ensures schema + quality
-- `fundamentals_data.py` — fetches and processes fundamentals
+- `fundamentals_data.py` — fetches and processes fundamentals. Fundamental data is delayed using a conservative reporting lag approximation
+  to better align signal availability with public disclosures
 - `dataset.py` — dataset construction logic
 - `run_feeds_test.py` — CLI entry point
 
@@ -82,6 +84,7 @@ Core logic:
   - Volatility floor
 - Rebalance periodically
 - Execute trades at next-day open with slippage
+- Separate overnight and intraday return attribution
 
 Key files:
 - `portfolio.py`
@@ -235,6 +238,8 @@ data/
 ### 4. Realism
 - Slippage modeling
 - Delayed execution (next-day open)
+- Explicit overnight vs intraday return attribution
+- Conservative handling of fundamental reporting delays
 - Turnover tracking
 
 ---
@@ -260,6 +265,10 @@ Used for:
 - Simplified execution model
 - No transaction cost microstructure modeling
 - Limited fundamental coverage
+- Fundamental data uses a fixed reporting lag approximation rather than true
+  point-in-time filing timestamps
+- Yahoo Finance data may contain occasional historical inconsistencies or
+  corporate-action anomalies requiring row-level cleaning
 
 ---
 
