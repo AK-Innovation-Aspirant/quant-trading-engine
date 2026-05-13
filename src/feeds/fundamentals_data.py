@@ -11,6 +11,7 @@ from .universe import get_reference_universe
 
 DEFAULT_FUNDAMENTALS_PATH = Path("data/fundamentals.parquet")
 
+FUNDAMENTAL_REPORTING_LAG_DAYS = 60
 
 def _extract_quarterly_net_income(financials: pd.DataFrame) -> pd.Series:
     if financials is None or financials.empty:
@@ -100,26 +101,33 @@ def _extract_historical_ttm_eps(symbol: str) -> pd.DataFrame:
     df = df.dropna(subset=["quarterly_eps"])
 
     if df.empty:
-        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+        return pd.DataFrame(columns=["period_end", "date", "symbol", "trailing_eps"])
 
     df["trailing_eps"] = df["quarterly_eps"].rolling(window=4, min_periods=4).sum()
     df = df.dropna(subset=["trailing_eps"])
 
     if df.empty:
-        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+        return pd.DataFrame(columns=["period_end", "date", "symbol", "trailing_eps"])
 
-    out = df.reset_index().rename(columns={"index": "date"})
-    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
+    out = df.reset_index().rename(columns={"index": "period_end"})
+    out["period_end"] = pd.to_datetime(out["period_end"]).dt.normalize()
+
+    out["date"] = (
+        out["period_end"]
+        + pd.Timedelta(days=FUNDAMENTAL_REPORTING_LAG_DAYS)
+    )
+
     out["symbol"] = symbol
     out["trailing_eps"] = pd.to_numeric(out["trailing_eps"], errors="coerce")
 
     out = (
-        out[["date", "symbol", "trailing_eps"]]
+        out[["period_end", "date", "symbol", "trailing_eps"]]
         .dropna(subset=["date", "symbol", "trailing_eps"])
         .sort_values(["symbol", "date"])
         .drop_duplicates(subset=["date", "symbol"], keep="last")
         .reset_index(drop=True)
     )
+
     return out
 
 
@@ -155,7 +163,7 @@ def download_reference_fundamentals(
             print(f"[WARN] Failed fundamentals download for {symbol}: {exc}")
 
     if not frames:
-        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+        return pd.DataFrame(columns=["period_end", "date", "symbol", "trailing_eps"])
 
     out = pd.concat(frames, ignore_index=True)
     out["date"] = pd.to_datetime(out["date"])
@@ -189,7 +197,7 @@ def merge_with_existing_fundamentals(
         merged = pd.concat([existing_df, new_df], ignore_index=True)
 
     if merged.empty:
-        return pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+        return pd.DataFrame(columns=["period_end", "date", "symbol", "trailing_eps"])
 
     merged["date"] = pd.to_datetime(merged["date"])
     merged["symbol"] = merged["symbol"].astype(str)
@@ -212,7 +220,7 @@ def save_fundamentals(
 
     out = df.copy()
     if out.empty:
-        out = pd.DataFrame(columns=["date", "symbol", "trailing_eps"])
+        out = pd.DataFrame(columns=["period_end", "date", "symbol", "trailing_eps"])
     else:
         out["date"] = pd.to_datetime(out["date"])
         out["symbol"] = out["symbol"].astype(str)

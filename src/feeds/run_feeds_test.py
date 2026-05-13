@@ -6,7 +6,7 @@ from src.feeds.dataset import load_market_data, get_tradable_universe_on_date
 def main() -> None:
     market_df = update_market_data_parquet(
         parquet_path="data/market_data.parquet",
-        period="5y",
+        period="max",
     )
 
     fundamentals_df = update_fundamentals_parquet(

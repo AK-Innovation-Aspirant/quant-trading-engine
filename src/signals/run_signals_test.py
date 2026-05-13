@@ -28,11 +28,11 @@ def main() -> None:
         reversal_lookback=5,
         volatility_lookback=20,
         trend_sma_lookback=63,
-        weight_momentum=0.35,
-        weight_reversal=0.15,
-        weight_volatility=0.15,
-        weight_trend=0.15,
-        weight_value=0.20,
+        weight_momentum=0.7,
+        weight_reversal=0.0,
+        weight_volatility=0.0,
+        weight_trend=0.0,
+        weight_value=0.3,
     )
 
     signals_df = compute_signals(

@@ -68,6 +68,66 @@ def build_close_price_matrix(market_data: pd.DataFrame) -> pd.DataFrame:
     )
     return close_matrix
 
+def build_open_close_price_matrices(market_data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    required = ["date", "symbol", "open", "close"]
+    _validate_columns(market_data, required=required, df_name="market_data.parquet")
+
+    open_matrix = (
+        market_data.pivot(index="date", columns="symbol", values="open")
+        .sort_index()
+        .astype(float)
+    )
+
+    close_matrix = (
+        market_data.pivot(index="date", columns="symbol", values="close")
+        .sort_index()
+        .astype(float)
+    )
+
+    open_matrix = open_matrix.where(open_matrix > 0.0)
+    close_matrix = close_matrix.where(close_matrix > 0.0)
+
+    return open_matrix, close_matrix
+
+
+def compute_open_aware_return_matrices(
+    open_matrix: pd.DataFrame,
+    close_matrix: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    previous_close = close_matrix.shift(1)
+
+    overnight_returns = (open_matrix / previous_close) - 1.0
+    intraday_returns = (close_matrix / open_matrix) - 1.0
+
+    overnight_returns = overnight_returns.replace([np.inf, -np.inf], np.nan)
+    intraday_returns = intraday_returns.replace([np.inf, -np.inf], np.nan)
+
+    overnight_returns = overnight_returns.where(overnight_returns > -1.0)
+    intraday_returns = intraday_returns.where(intraday_returns > -1.0)
+
+    overnight_returns = overnight_returns.where(overnight_returns.abs() <= 5.0)
+    intraday_returns = intraday_returns.where(intraday_returns.abs() <= 5.0)
+
+    overnight_returns.name = "overnight_return"
+    intraday_returns.name = "intraday_return"
+
+    return overnight_returns, intraday_returns
+
+def build_open_aware_weight_matrices(
+    holdings: pd.DataFrame,
+    trading_dates: pd.Index,
+    symbols: pd.Index,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    intraday_weight_matrix = build_daily_weight_matrix(
+        holdings=holdings,
+        trading_dates=trading_dates,
+        symbols=symbols,
+    )
+
+    overnight_weight_matrix = intraday_weight_matrix.copy()
+
+    return overnight_weight_matrix, intraday_weight_matrix
+
 def compute_asset_return_matrix(close_matrix: pd.DataFrame) -> pd.DataFrame:
     prices = close_matrix.copy().astype(float)
 

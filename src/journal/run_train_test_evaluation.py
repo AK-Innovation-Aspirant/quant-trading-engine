@@ -3,19 +3,26 @@ from __future__ import annotations
 import pandas as pd
 
 from .journal_config import JOURNAL_DAILY_PATH
-from .journal_metrics import build_summary_metrics
-
+from .journal_metrics import (
+    build_summary_metrics,
+    compute_drawdown_series,
+    compute_equity_curve,
+)
 
 TRAIN_END = "2024-12-31"
 TEST_START = "2025-01-01"
 
-
 def evaluate_period(df: pd.DataFrame, name: str) -> None:
     daily_returns = df["net_portfolio_return"]
-    equity_curve = df["portfolio_value"]
-    drawdown = df["drawdown"]
     turnover = df["turnover"]
     trading_cost = df["trading_cost"]
+
+    equity_curve = compute_equity_curve(
+        daily_portfolio_returns=daily_returns,
+        initial_capital=1.0,
+    )
+
+    drawdown = compute_drawdown_series(equity_curve)
 
     benchmark = None
     if "benchmark_return" in df.columns:

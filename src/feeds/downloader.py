@@ -37,6 +37,12 @@ def _download_one_symbol(
         "multi_level_index": False,
     }
 
+    if period is None and start is None:
+        raise ValueError("Must specify either period or start date for download.")
+    
+    if period is not None and start is not None:
+        raise ValueError("Use either period or start/end, not both.")
+
     if period is not None:
         kwargs["period"] = period
     else:
@@ -53,7 +59,7 @@ def download_reference_universe(
     symbols: Iterable[str] | None = None,
     start: str | None = None,
     end: str | None = None,
-    period: str | None = "5y",
+    period: str | None = None,
 ) -> pd.DataFrame:
     """
     Download and clean daily OHLCV data for the reference universe.
@@ -75,7 +81,37 @@ def download_reference_universe(
         except Exception as exc:
             print(f"[WARN] Failed download for {symbol}: {exc}")
 
-    cleaned = clean_downloaded_symbol_data(raw_by_symbol)
+    cleaned_frames: list[pd.DataFrame] = []
+    failed_symbols: list[tuple[str, str]] = []
+
+    for symbol, raw in raw_by_symbol.items():
+        try:
+            cleaned_one = clean_downloaded_symbol_data({symbol: raw})
+
+            if cleaned_one.empty:
+                failed_symbols.append((symbol, "empty after cleaning"))
+                continue
+
+            cleaned_frames.append(cleaned_one)
+
+        except Exception as exc:
+            failed_symbols.append((symbol, str(exc)))
+            print(f"[WARN] Skipping {symbol}: {exc}")
+
+    if not cleaned_frames:
+        raise ValueError("No valid market data downloaded.")
+
+    cleaned = pd.concat(cleaned_frames, ignore_index=True)
+
+    print()
+    print(f"Valid downloaded symbols: {len(cleaned_frames)}")
+    print(f"Skipped symbols: {len(failed_symbols)}")
+
+    if failed_symbols:
+        print("Skipped symbol details:")
+        for symbol, reason in failed_symbols:
+            print(f"  {symbol}: {reason}")
+
     return cleaned
 
 
@@ -115,7 +151,7 @@ def update_market_data_parquet(
     symbols: Iterable[str] | None = None,
     start: str | None = None,
     end: str | None = None,
-    period: str | None = "5y",
+    period: str | None = None,
 ) -> pd.DataFrame:
     """
     End-to-end updater:

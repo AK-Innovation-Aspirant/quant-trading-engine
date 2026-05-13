@@ -29,17 +29,19 @@ def main() -> None:
         output_round=6,
     )
     """
+    # Testing out breadth
     cfg = PortfolioConfig(
-        top_n=10,
+        top_n=30,
         rebalance_every_n_days=5,
-        entry_n=15,
-        exit_n=25,
-        weight_method="inverse_vol",         
+        entry_n=40,
+        exit_n=60,
+        weight_method="inverse_vol",
         max_weight=0.15,
         slippage_bps=10.0,
         min_vol_floor=1e-6,
         output_round=6,
     )
+
 
     targets_df, trades_df, holdings_df = run_portfolio_engine(
         signals_df=signals_df,
